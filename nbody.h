@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdlib.h>
 #include <iostream>
 #include "ap_fixed.h"

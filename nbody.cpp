@@ -51,7 +51,7 @@ ALL TIMES.
 #include "hls_math.h"
 #define INPUT_LENGTH 10000
 
-#define BATCH_SIZE 4
+#define BATCH_SIZE 8
 
 extern "C" {
 void krnl_nbody(float *particles, 
@@ -81,7 +81,7 @@ void krnl_nbody(float *particles,
     TIME_STEP: for (int t = 0; t < iterations; t++){
         #pragma HLS pipeline off
         
-        Pi: for (int i = 0; i < INPUT_LENGTH; i += (BATCH_SIZE * 5)){
+        Pi: for (int i = 0; i < (INPUT_LENGTH * 5); i += (BATCH_SIZE * 5)){
             #pragma HLS pipeline off
             
             Load_Batch:for (int p = 0; p < BATCH_SIZE; p++){
@@ -109,7 +109,7 @@ void krnl_nbody(float *particles,
 
 
             
-            Pj: for (int j = 0; j < INPUT_LENGTH; j += 5)
+            Pj: for (int j = 0; j < (INPUT_LENGTH * 5); j += 5)
             {
                 #pragma HLS pipeline
 
@@ -118,7 +118,7 @@ void krnl_nbody(float *particles,
                 float yj = particles_tmp[j + 1];
                 float massj = particles_tmp[j + 4];
                 
-                //#pragma HLS pipeline
+                
                 BATCH_FORCE: for (int b = 0; b < BATCH_SIZE; b++){
                     // Calculate the distance between the two particles in 2D
                     // BufP[b][0] = xi, BufP[b][1] = yi, BufP[b][4] = massi
