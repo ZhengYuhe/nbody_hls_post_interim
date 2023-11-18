@@ -67,7 +67,7 @@ void krnl_nbody(float *particles,
     particles_tmp = particles;
     temp_tmp = temp;
 
-    //float BufP[BATCH_SIZE][5];
+    float BufP[BATCH_SIZE][5];
 
     TIME_STEP: for (int t = 0; t < iterations; t++){
         
