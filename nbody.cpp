@@ -67,6 +67,8 @@ void krnl_nbody(float *particles,
     particles_tmp = particles;
     temp_tmp = temp;
 
+    int curr_index;
+
     float BufP[BATCH_SIZE][5]; // batch several particles to calculate in parallel
     float BufF[BATCH_SIZE][2]; // batch the forces on the particles
 
@@ -77,18 +79,19 @@ void krnl_nbody(float *particles,
     #pragma HLS array_partition dim=1 type=complete variable=BufF
 
     TIME_STEP: for (int t = 0; t < iterations; t++){
-    
         #pragma HLS pipeline off
+        
         Pi: for (int i = 0; i < INPUT_LENGTH; i += (BATCH_SIZE * 5)){
+            #pragma HLS pipeline off
             
-            
-            Load_Batch:for (int p = i; p < BATCH_SIZE; p++){
+            Load_Batch:for (int p = 0; p < BATCH_SIZE; p++){
                 #pragma HLS unroll
-                BufP[p][0] = particles_tmp[p];      //x
-                BufP[p][1] = particles_tmp[p + 1];  //y
-                BufP[p][2] = particles_tmp[p + 2];  //vx
-                BufP[p][3] = particles_tmp[p + 3];  //vy
-                BufP[p][4] = particles_tmp[p + 4];  //mass
+                curr_index = i + p * 5;
+                BufP[p][0] = particles_tmp[curr_index];      //x
+                BufP[p][1] = particles_tmp[curr_index + 1];  //y
+                BufP[p][2] = particles_tmp[curr_index + 2];  //vx
+                BufP[p][3] = particles_tmp[curr_index + 3];  //vy
+                BufP[p][4] = particles_tmp[curr_index + 4];  //mass
                 BufF[p][0] = 0;                     //force_x
                 BufF[p][1] = 0;                     //force_y
             }
@@ -105,23 +108,22 @@ void krnl_nbody(float *particles,
             //float force_y = 0;
 
 
-            #pragma HLS pipeline off
+            
             Pj: for (int j = 0; j < INPUT_LENGTH; j += 5)
             {
-                //if (i == j){continue;}
-                
-                // CalculateForce2D(particleData, i, j, force_x, force_y);
+                #pragma HLS pipeline
 
                 // read particle j
                 float xj = particles_tmp[j];
                 float yj = particles_tmp[j + 1];
                 float massj = particles_tmp[j + 4];
                 
-                #pragma HLS pipeline II=4
+                //#pragma HLS pipeline
                 BATCH_FORCE: for (int b = 0; b < BATCH_SIZE; b++){
                     // Calculate the distance between the two particles in 2D
                     // BufP[b][0] = xi, BufP[b][1] = yi, BufP[b][4] = massi
                     // BufF[b][0] = force_x, BufF[b][1] = force_y
+                    if (i + b * 5 == j){continue;}
 
                     float dx = xj - BufP[b][0];
                     float dy = yj - BufP[b][1];
@@ -142,17 +144,19 @@ void krnl_nbody(float *particles,
                     
             }
 
-            #pragma HLS pipeline off
-            Update_Batch: for (int p = i; p < BATCH_SIZE; p++){
+            
+            Update_Batch: for (int p = 0; p < BATCH_SIZE; p++){
+                #pragma HLS unroll
+                curr_index = i + p * 5;
                 // Calculate acceleration in 2D
                 float ax = BufF[p][0] / BufP[p][4];
                 float ay = BufF[p][1] / BufP[p][4];
                 // Update velocity in 2D using the calculated acceleration and time step
-                temp_tmp[p + 2] = BufP[p][2] + ax * time_step;
-                temp_tmp[p + 3] = BufP[p][3] + ay * time_step;
-                temp_tmp[p] = BufP[p][0] + temp_tmp[p + 2] * time_step;
-                temp_tmp[p + 1] = BufP[p][1] + temp_tmp[p + 3] * time_step;
-                //temp_tmp[p + 4] = mass;
+                temp_tmp[curr_index + 2] = BufP[p][2] + ax * time_step;
+                temp_tmp[curr_index + 3] = BufP[p][3] + ay * time_step;
+                temp_tmp[curr_index] = BufP[p][0] + temp_tmp[curr_index + 2] * time_step;
+                temp_tmp[curr_index + 1] = BufP[p][1] + temp_tmp[curr_index + 3] * time_step;
+                temp_tmp[curr_index + 4] = BufP[p][4];
             }
             
         }
